@@ -1,0 +1,1582 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Choose Your Own Adventure — Reader & Builder (ES5 v15 Visualizer Fixed)</title>
+<style>
+  :root{
+    --text-size:17px;--line-height:1.3;--column-max:68ch;--page-pad:3rem;--ui-gap:.75rem;
+    --fg:#1a1a1a;--muted:#666;--bg:#faf8f5;--panel:#fff;--accent:#2f6fce;--accent-ink:#0d3a7c;
+    --divider:#e8e2d9;--choice-bg:#f5f1ea;--choice-hover:#ebe5db;
+    --ok:#2e7d32;--warn:#b26a00;--err:#b00020;--ok-bg:#eaf5ea;--warn-bg:#fff5e6;--err-bg:#fdecec;
+  }
+  [data-theme="dark"]{
+    --fg:#e6e6e6;--muted:#9aa0a6;--bg:#121212;--panel:#1c1c1c;--accent:#7aa2f7;--accent-ink:#b3c7ff;
+    --divider:#2a2a2a;--choice-bg:#212121;--choice-hover:#272727;
+    --ok:#9ad29a;--warn:#f2c17d;--err:#ff9090;--ok-bg:#1b2b1b;--warn-bg:#2b2416;--err-bg:#2b1717;
+  }
+  html,body{background:var(--bg);color:var(--fg);font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;font-size:var(--text-size);line-height:var(--line-height);}
+  body{margin:0;padding:0;}
+  .page{max-width:var(--column-max);margin:0 auto;padding:var(--page-pad) 1rem;}
+  header.hero{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;border-bottom:1px solid var(--divider);padding-bottom:1rem;margin-bottom:1rem;}
+  .title{font-size:calc(var(--text-size)*1.6);font-weight:600;}
+  .sub{color:var(--muted);font-size:.95em;margin-top:.25rem;}
+  .theme-toggle{background:transparent;color:var(--fg);border:1px solid var(--divider);border-radius:999px;padding:.35rem .6rem;cursor:pointer;font-size:.95em;}
+  .theme-toggle:hover{background:var(--choice-hover);}
+  .tabs{display:inline-flex;gap:.5rem;align-items:center;margin-top:.75rem;}
+  .tab{background:transparent;color:var(--fg);border:1px solid var(--divider);border-radius:999px;padding:.35rem .8rem;cursor:pointer;font-weight:600;}
+  .tab.active{background:var(--choice-hover);}
+  button.primary{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:.6rem .9rem;font-weight:600;cursor:pointer;}
+  button.primary:hover{background:#2a63b8;}
+  [data-theme="dark"] button.primary:hover{background:#6b93e8;}
+  button.ghost{background:transparent;color:var(--fg);border:1px solid var(--divider);border-radius:6px;padding:.45rem .7rem;cursor:pointer;}
+  button.ghost:hover{background:var(--choice-hover);}
+  .panel{background:var(--panel);border:1px solid var(--divider);border-radius:10px;padding:1rem;margin:1rem 0 1.25rem;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+  .panel h2{margin:0 0 .5rem;font-size:1.1em;}
+  .panel .hint{color:var(--muted);font-size:.95em;}
+  label{font-weight:600;margin-bottom:.25rem;}
+  input[type="text"],input[type="number"],textarea,select{border:1px solid var(--divider);border-radius:6px;padding:.55rem;background:#fffdf9;color:var(--fg);font-family:inherit;font-size:inherit;line-height:inherit;}
+  [data-theme="dark"] input,[data-theme="dark"] textarea,[data-theme="dark"] select{background:#181818;}
+  textarea{min-height:120px;resize:vertical;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;}
+  .row>div,.row3>div{display:flex;flex-direction:column;}
+  .validator{margin:.5rem 0 1.25rem;border:1px solid var(--divider);border-radius:10px;overflow:hidden;}
+  .validator .summary{display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;font-weight:600;}
+  .validator.ok .summary{color:var(--ok);background:var(--ok-bg);}
+  .validator.warn .summary{color:var(--warn);background:var(--warn-bg);}
+  .validator.err .summary{color:var(--err);background:var(--err-bg);}
+  .validator details{border-top:1px solid var(--divider);background:var(--panel);}
+  .validator details>summary{cursor:pointer;padding:.6rem .8rem;font-weight:600;}
+  .validator .list{padding:.6rem .8rem .8rem;}
+  .badge{display:inline-block;font-size:.85em;border:1px solid var(--divider);border-radius:999px;padding:.15rem .5rem;color:var(--muted);background:var(--panel);}
+  .node-title{font-weight:700;font-size:calc(var(--text-size)*1.1);margin:.5rem 0 .75rem;}
+  .node-body p{margin:.6rem 0;hyphens:auto;}
+  .choices{margin-top:1rem;display:grid;gap:.5rem;}
+  .choice-btn{text-align:left;background:var(--choice-bg);border:1px solid var(--divider);border-radius:8px;padding:.65rem .8rem;cursor:pointer;}
+  .choice-btn:hover{background:var(--choice-hover);}
+  .footer{display:flex;gap:var(--ui-gap);align-items:center;margin-top:.75rem;color:var(--muted);}
+  .node-list{display:grid;gap:.5rem;}
+  .node-card{background:var(--choice-bg);border:1px solid var(--divider);border-radius:8px;padding:.6rem .75rem;display:flex;justify-content:space-between;align-items:center;}
+  .node-card .meta{color:var(--muted);font-size:.95em;}
+  .choice-row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:.5rem;align-items:start;}
+  .choice-row .del{justify-self:end;}
+  pre.preview{white-space:pre-wrap;border:1px dashed var(--divider);border-radius:8px;padding:.75rem;background:var(--panel);}
+  .play{background:var(--panel);border:1px solid var(--divider);border-radius:10px;padding:1rem;margin:1rem 0 1.25rem;}
+  .play-title{font-weight:700;margin-bottom:.25rem;}
+  .play-node-title{font-weight:700;font-size:calc(var(--text-size)*1.1);margin:.5rem 0 .75rem;}
+  .play-choices{display:grid;gap:.5rem;margin-top:.75rem;}
+  .play-btn{ text-align:left; background:var(--choice-bg);border:1px solid var(--divider);border-radius:8px;padding:.6rem .75rem;cursor:pointer;}
+  .play-btn:hover{background:var(--choice-hover);}
+  .play-back{margin-top:.75rem;}
+  @media(max-width:600px){.row,.row3,.choice-row{grid-template-columns:1fr;}}
+
+  /* Snackbar (Undo) */
+  .snackbar {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    display: none;
+    align-items: center;
+    gap: .5rem;
+    background: var(--panel);
+    color: var(--fg);
+    border: 1px solid var(--divider);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    padding: .6rem .8rem;
+    z-index: 9999;
+  }
+  .snackbar.show { display: flex; }
+  .snackbar .msg { font-size: .95em; }
+  .snackbar .undo-btn {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--divider);
+    border-radius: 6px;
+    padding: .35rem .6rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .snackbar .undo-btn:hover { background: var(--choice-hover); }
+
+  /* Error banner */
+  .err-banner {
+    position: sticky; top: 0; z-index: 10000;
+    background: var(--err-bg); color: var(--err);
+    border-bottom: 1px solid var(--err);
+    padding: .5rem .75rem; font-weight: 600;
+    display: none;
+  }
+  .err-banner.show { display: block; }
+
+  /* Visualizer (floating) */
+  .viz-toggle { position: fixed; left: 20px; bottom: 20px; z-index: 9998; }
+  .viz-panel {
+    position: fixed; left: 20px; bottom: 70px; width: 420px; height: 300px; z-index: 9997;
+    display: none; background: var(--panel); border: 1px solid var(--divider); border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.12); overflow: hidden;
+  }
+  .viz-panel.show { display: block; }
+  .viz-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .5rem .6rem; border-bottom: 1px solid var(--divider); font-weight: 600;
+  }
+  .viz-body { position: relative; width: 100%; height: calc(100% - 40px); background: var(--panel); }
+  .viz-canvas { width: 100%; height: 100%; display: block; cursor: grab; }
+  .viz-legend {
+    position: absolute; right: 6px; top: 6px; font-size: .85em; background: var(--panel);
+    border: 1px solid var(--divider); border-radius: 6px; padding: .3rem .45rem;
+  }
+  .viz-dot { display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:.3rem; vertical-align:middle; }
+  .viz-dot.green { background: var(--ok); }
+  .viz-dot.red { background: var(--err); }
+  .viz-dot.gray { background: #999; }
+  .viz-count { margin-left: .6rem; font-weight: 400; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="errorBanner" class="err-banner" role="alert" aria-live="polite"></div>
+
+<div class="page">
+  <header class="hero">
+    <div>
+      <div class="title">Choose Your Own Adventure — Reader & Builder</div>
+      <div class="sub">Create, validate, test play, and read—all in one</div>
+      <div class="tabs" role="tablist" aria-label="Mode tabs">
+        <button type="button" class="tab active" id="tabReader" role="tab" aria-controls="panelReader" aria-selected="true">Reader</button>
+        <button type="button" class="tab" id="tabBuilder" role="tab" aria-controls="panelBuilder" aria-selected="false">Builder</button>
+      </div>
+    </div>
+    <button type="button" id="themeToggle" class="theme-toggle" aria-pressed="false" title="Toggle dark mode">
+      <span id="themeIcon" aria-hidden="true">🌙</span><span id="themeLabel">Dark Mode</span>
+    </button>
+  </header>
+
+  <!-- Reader -->
+  <section id="panelReader" role="tabpanel" aria-labelledby="tabReader">
+    <section class="panel">
+      <h2>Reader — Load & Start</h2>
+      <p class="hint">Paste text or load a file. The <strong>first non-empty line</strong> becomes the book title.</p>
+      <label for="readerInput">Adventure text (plain format)</label>
+      <textarea id="readerInput" placeholder="First line is the book title.
+After that, add nodes like:
+
+# NODE: 1
+Title: In the Woods
+You wake beneath tall firs. A path splits ahead.
+
+DECISION: 2
+- Take the left path -> 2
+- Take the right path -> 3"></textarea>
+      <div class="row">
+        <div class="inline">
+          <input type="file" id="readerFile" accept=".txt" />
+          <button type="button" class="ghost" id="readerLoadBtn">Load .txt</button>
+        </div>
+        <div class="inline">
+          <button type="button" class="primary" id="readerStartBtn">Start</button>
+          <button type="button" class="ghost" id="readerResetBtn">Reset</button>
+        </div>
+      </div>
+      <div class="inline" style="margin-top:.5rem;">
+        <button type="button" class="ghost" id="readerSendToBuilderBtn">Send to Builder</button>
+        <span class="hint">Converts the loaded text into an editable project.</span>
+      </div>
+      <div class="sub" id="readerStatus"></div>
+    </section>
+
+    <section class="panel">
+      <h2 id="readerBookTitle">Choose Your Own Adventure</h2>
+      <p class="sub" id="readerBookSub">Paste text or load a file, then click Start.</p>
+      <section id="readerValidator" class="validator ok" hidden>
+        <div class="summary" id="readerValidatorSummary">Validation</div>
+        <details id="readerValidatorDetails"><summary>Details</summary><div class="list" id="readerValidatorList"></div></details>
+      </section>
+
+      <div id="readerView" aria-live="polite"></div>
+
+      <div class="footer">
+        <button type="button" class="ghost" id="readerBackBtn" title="Go back to previous node">← Back</button>
+        <span id="readerProgress"></span>
+        <span class="badge" id="readerStatsBadge" title="Nodes and endings"></span>
+      </div>
+    </section>
+  </section>
+
+  <!-- Builder -->
+  <section id="panelBuilder" role="tabpanel" aria-labelledby="tabBuilder" hidden>
+    <section class="panel">
+      <h2>Step 1 — Book Title & Project</h2>
+      <p class="hint">The first non-empty line of your export is the book title shown in the reader.</p>
+      <div class="row">
+        <div>
+          <label for="builderBookTitle">Book Title</label>
+          <input type="text" id="builderBookTitle" placeholder="e.g., The Sunlit Path" />
+        </div>
+        <div>
+          <label for="builderStartNode">Start at Node</label>
+          <input type="number" id="builderStartNode" min="1" placeholder="e.g., 1" />
+          <span class="hint">Defaults to the lowest node number if blank.</span>
+        </div>
+      </div>
+      <div class="inline" style="margin-top:.75rem;">
+        <input type="file" id="builderImportTxtFile" accept=".txt" />
+        <button type="button" class="ghost" id="builderImportTxtBtn">Import .txt</button>
+        <input type="file" id="builderImportJsonFile" accept=".json" />
+        <button type="button" class="ghost" id="builderImportJsonBtn">Load Project (.json)</button>
+        <button type="button" class="ghost" id="builderSaveJsonBtn">Save Project (.json)</button>
+        <button type="button" class="ghost" id="builderRestoreAutosaveBtn">Restore Autosave</button>
+        <span class="hint">Autosaves locally after edits; you can restore later.</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Step 2 — Create Nodes</h2>
+      <p class="hint">Each “scene” is a node with a unique number (1, 2, 3…). Add nodes first, then edit details.</p>
+      <div class="inline" style="margin-bottom:.5rem;">
+        <button type="button" class="primary" id="builderAddNodeBtn">+ Add Node</button>
+        <span class="badge" id="builderStatsBadge">Nodes: 0 • Endings: 0</span>
+        <button type="button" class="ghost" id="builderSendToReaderBtn">Send Preview to Reader</button>
+      </div>
+      <div class="node-list" id="builderNodeList"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Step 3 — Edit Selected Node</h2>
+      <p class="hint">Select a node above to edit. Add description and choices. Endings display a final message.</p>
+      <div id="builderEditorInner">
+        <p class="hint">No node selected yet. Click a node card to edit.</p>
+      </div>
+    </section>
+
+    <section id="builderValidator" class="validator ok" hidden>
+      <div class="summary" id="builderValidatorSummary">Validation</div>
+      <details id="builderValidatorDetails"><summary>Details</summary><div class="list" id="builderValidatorList"></div></details>
+    </section>
+
+    <section class="panel">
+      <h2>Step 4 — Preview & Export</h2>
+      <p class="hint">This is exactly what the reader will import. You can copy or download the file.</p>
+      <pre class="preview" id="builderPreview"></pre>
+      <div class="inline" style="margin-top:.5rem;">
+        <button type="button" class="primary" id="builderDownloadBtn">Download .txt</button>
+        <button type="button" class="ghost" id="builderCopyBtn">Copy to Clipboard</button>
+      </div>
+    </section>
+
+    <section class="play">
+      <div class="play-title">Step 5 — Test Play</div>
+      <p class="hint">Click <strong>Start Test</strong> to play through your current draft (no file needed).</p>
+      <div class="inline" style="margin-bottom:.5rem;">
+        <button type="button" class="primary" id="builderStartPlayBtn">Start Test</button>
+        <button type="button" class="ghost" id="builderResetPlayBtn">Reset</button>
+      </div>
+      <div id="builderPlayView">
+        <p class="hint">Not running yet. Click “Start Test”.</p>
+      </div>
+    </section>
+
+    <div class="footer">
+      <button type="button" class="ghost" id="builderNewStoryBtn">Reset (New Story)</button>
+      <span id="builderStatus" class="sub"></span>
+    </div>
+  </section>
+</div>
+
+<!-- Snackbar for Undo -->
+<div id="snackbar" class="snackbar" role="alert" aria-live="polite">
+  <span class="msg" id="snackbarMsg">Action completed.</span>
+  <button type="button" class="undo-btn" id="snackbarUndoBtn">Undo</button>
+</div>
+
+<!-- Visualizer toggle & panel -->
+<button type="button" class="ghost viz-toggle" id="vizToggleBtn" title="Show/Hide Visualizer">📈 Visualizer</button>
+<div class="viz-panel" id="vizPanel" aria-label="Graph Visualizer">
+  <div class="viz-header">
+    <span>Node Graph <span class="viz-count" id="vizCount">Nodes: 0</span></span>
+    <span>
+      <button type="button" class="ghost" id="vizZoomOutBtn" title="Zoom out">−</button>
+      <button type="button" class="ghost" id="vizZoomInBtn" title="Zoom in">+</button>
+      <button type="button" class="ghost" id="vizHideBtn" title="Hide">Hide</button>
+    </span>
+  </div>
+  <div class="viz-body">
+    <canvas id="vizCanvas" class="viz-canvas"></canvas>
+    <div class="viz-legend">
+      <div><span class="viz-dot green"></span>Reachable & complete</div>
+      <div><span class="viz-dot red"></span>Missing components</div>
+      <div><span class="viz-dot gray"></span>Unreachable</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ===== Global error banner ===== */
+  var errBanner = null;
+  function showErrorBanner(msg){
+    try{
+      if(!errBanner) errBanner = document.getElementById('errorBanner');
+      if(!errBanner) return;
+      errBanner.textContent = 'Script error: ' + String(msg||'unknown');
+      errBanner.classList.add('show');
+      console.error('Script error:', msg);
+    }catch(_){}
+  }
+  window.addEventListener('error', function(ev){
+    showErrorBanner(ev && ev.message ? ev.message : 'Unknown error');
+  });
+  window.addEventListener('unhandledrejection', function(ev){
+    showErrorBanner(ev && ev.reason ? ev.reason : 'Unhandled promise rejection');
+  });
+
+  document.addEventListener('DOMContentLoaded', function(){
+    /* ===== Safe storage ===== */
+    function makeSafeStorage(){
+      try{
+        var t='__cya_test__'; localStorage.setItem(t,'1'); localStorage.removeItem(t);
+        return {
+          getItem: function(k){ return localStorage.getItem(k); },
+          setItem: function(k,v){ localStorage.setItem(k,v); },
+          removeItem: function(k){ localStorage.removeItem(k); }
+        };
+      }catch(e){
+        var mem={}; return {
+          getItem: function(k){ return mem.hasOwnProperty(k)?mem[k]:null; },
+          setItem: function(k,v){ mem[k]=String(v); },
+          removeItem: function(k){ delete mem[k]; }
+        };
+      }
+    }
+    var safeStorage = makeSafeStorage();
+
+    /* ===== Utils ===== */
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function sanitizeEndingQuotes(s){ return String(s).replace(/"/g,'”'); }
+
+    /* ===== SHARED PARSER ===== */
+    function sharedParseAdventure(text){
+      var nodes={};
+      var blocks=String(text).split(/\n(?=# NODE: )/).map(function(s){return s.trim();}).filter(function(v){return v;});
+      for(var b=0;b<blocks.length;b++){
+        var block=blocks[b];
+        var mNode=block.match(/^# NODE:\s*(\d+)/m); if(!mNode) continue;
+        var id=mNode[1];
+        var mTitle=block.match(/^Title:\s*(.+)$/m); var title=mTitle?mTitle[1].trim():('Node '+id);
+        var mDec=block.match(/^DECISION:\s*(\d+)/m); var decisionCount=mDec?parseInt(mDec[1],10):0;
+        var titleLine=mTitle?mTitle[0]:""; var decLine=mDec?mDec[0]:"";
+        var titleIndex=mTitle?block.indexOf(titleLine):-1; var decIndex=mDec?block.indexOf(decLine):-1;
+        var body='';
+        if(titleIndex!==-1 && decIndex!==-1) body=block.slice(titleIndex+titleLine.length, decIndex).trim();
+        else if(titleIndex!==-1) body=block.slice(titleIndex+titleLine.length).trim();
+        else body=block.slice(block.indexOf(mNode[0])+mNode[0].length).trim();
+        var choices=[];
+        var choiceLines=decIndex!==-1? block.slice(decIndex).split('\n').slice(1) : [];
+        for(var j=0;j<choiceLines.length;j++){
+          var line=choiceLines[j];
+          var mEnd=line.match(/^\s*-\s*(.+?)\s*->\s*END:\s*"(.*)"\s*$/);
+          var mTarget=line.match(/^\s*-\s*(.+?)\s*->\s*(\d+)\s*$/);
+          if(mEnd) choices.push({ text:mEnd[1].trim(), end:mEnd[2] });
+          else if(mTarget) choices.push({ text:mTarget[1].trim(), target:mTarget[2] });
+        }
+        nodes[id]={ id:Number(id), title:title, body:body, choices:choices, decisionCount:decisionCount };
+      }
+      return nodes;
+    }
+    function sharedParseAdventureWithTitle(text){
+      var lines=String(text).split(/\r?\n/);
+      var title='', startIndex=0;
+      for(var i=0;i<lines.length;i++){
+        var s=lines[i].trim();
+        if(s.length){ title=s; startIndex=i+1; break; }
+      }
+      var remaining=lines.slice(startIndex).join('\n').trim();
+      var nodes=sharedParseAdventure(remaining);
+      return { title:title, nodes:nodes };
+    }
+    window.SharedParser = {
+      parseAdventure: sharedParseAdventure,
+      parseAdventureWithTitle: sharedParseAdventureWithTitle
+    };
+
+    /* ===== Shared validator (trim targets) ===== */
+    var StoryUtils = {
+      validate: function(nodes, startId){
+        var errors=[], warnings=[], info=[];
+        if(!nodes) nodes={};
+        var ids = Object.keys(nodes);
+
+        for(var i=0;i<ids.length;i++){
+          var id = ids[i];
+          var occ = (nodes[id] && nodes[id].occurrences) ? nodes[id].occurrences : 1;
+          if(occ>1) warnings.push('Node '+id+': appears '+occ+' times (later occurrence overrides earlier).');
+        }
+        for(var j=0;j<ids.length;j++){
+          var node = nodes[ids[j]];
+          var dc = (typeof node.decisionCount==='number')? node.decisionCount : ((node.choices||[]).length);
+          var actual = (node.choices||[]).length;
+          if(dc!==actual) warnings.push('Node '+node.id+': DECISION='+dc+' vs '+actual+' parsed choices.');
+        }
+
+        var setIds = {}; for(var k=0;k<ids.length;k++) setIds[ids[k]] = true;
+        for(var k2=0;k2<ids.length;k2++){
+          var n2 = nodes[ids[k2]];
+          var cs2 = (n2.choices||[]);
+          for(var m=0;m<cs2.length;m++){
+            var ch = cs2[m];
+            if(!ch.text || !String(ch.text).trim()){
+              warnings.push('Node '+n2.id+': a choice has empty text.');
+            }
+            if(ch.hasOwnProperty('target')){
+              var t = String(ch.target||'').trim();
+              if(!t || !setIds[t]){
+                warnings.push('Node '+n2.id+': choice "'+(ch.text||'(unnamed)')+'" points to missing node '+(t||'(blank)')+'.');
+              }
+            }
+          }
+        }
+
+        if(startId!=null){
+          var start = String(startId);
+          var visited = {}, stack = [start];
+          while(stack.length){
+            var u = stack.pop();
+            if(visited[u]) continue;
+            visited[u]=true;
+            var nu = nodes[u]; if(!nu) continue;
+            var chs = nu.choices || [];
+            for(var c=0;c<chs.length;c++){
+              var ct = chs[c];
+              if(ct.hasOwnProperty('target')){
+                var to = String(ct.target||'').trim();
+                if(to) stack.push(to);
+              }
+            }
+          }
+          for(var z=0;z<ids.length;z++){
+            if(!visited[ids[z]]) warnings.push('Node '+ids[z]+': unreachable from start node '+startId+'.');
+          }
+          var reachableEnding=false;
+          for(var z2=0;z2<ids.length;z2++){
+            var idz = ids[z2]; if(!visited[idz]) continue;
+            var nn = nodes[idz]; var chz = nn.choices||[];
+            for(var p=0;p<chz.length;p++){
+              if(chz[p].hasOwnProperty('end')) { reachableEnding=true; break; }
+            }
+            if(reachableEnding) break;
+          }
+          if(!reachableEnding && ids.length) errors.push('No reachable ending from start node '+startId+'.');
+
+          var seen={}, inStack={}, hasCycle=false;
+          function dfs(u){
+            if(inStack[u]) { hasCycle=true; return; }
+            if(seen[u]) return;
+            seen[u]=true; inStack[u]=true;
+            var nu = nodes[u]; var chs = (nu && nu.choices) ? nu.choices : [];
+            for(var q=0;q<chs.length;q++){
+              var c = chs[q];
+              if(c.hasOwnProperty('target')) dfs(String(c.target||'').trim());
+            }
+            inStack[u]=false;
+          }
+          dfs(String(startId));
+          if(hasCycle) info.push('Graph contains a loop. That’s fine if endings are reachable.');
+        }
+        return { errors:errors, warnings:warnings, info:info };
+      }
+    };
+
+    /* ===== Theme & Tabs ===== */
+    try{
+      var themeBtn=document.getElementById('themeToggle');
+      var themeIcon=document.getElementById('themeIcon');
+      var themeLabel=document.getElementById('themeLabel');
+
+      function isDark(){ return document.body.getAttribute('data-theme')==='dark'; }
+      function setDark(on){
+        if(on){
+          document.body.setAttribute('data-theme','dark');
+          safeStorage.setItem('cya_theme','dark');
+          if(themeBtn){ themeBtn.setAttribute('aria-pressed','true'); }
+          if(themeIcon){ themeIcon.textContent='☀️'; }
+          if(themeLabel){ themeLabel.textContent='Light Mode'; }
+        }else{
+          document.body.removeAttribute('data-theme');
+          safeStorage.setItem('cya_theme','light');
+          if(themeBtn){ themeBtn.setAttribute('aria-pressed','false'); }
+          if(themeIcon){ themeIcon.textContent='🌙'; }
+          if(themeLabel){ themeLabel.textContent='Dark Mode'; }
+        }
+      }
+      var savedTheme = safeStorage.getItem('cya_theme');
+      if(savedTheme==='dark') setDark(true); else setDark(false);
+      if(themeBtn) themeBtn.addEventListener('click', function(){ setDark(!isDark()); });
+
+      var tabReader=document.getElementById('tabReader');
+      var tabBuilder=document.getElementById('tabBuilder');
+      var panelReader=document.getElementById('panelReader');
+      var panelBuilder=document.getElementById('panelBuilder');
+
+      function activateTab(which){
+        var isReader=which==='reader';
+        if(tabReader) { tabReader.classList.toggle('active', isReader); tabReader.setAttribute('aria-selected', String(isReader)); }
+        if(tabBuilder) { tabBuilder.classList.toggle('active', !isReader); tabBuilder.setAttribute('aria-selected', String(!isReader)); }
+        if(panelReader) panelReader.hidden=!isReader;
+        if(panelBuilder) panelBuilder.hidden=isReader;
+        safeStorage.setItem('cya_tab', which);
+        if (window.VisualizerAPI) window.VisualizerAPI.refresh();
+      }
+      var savedTab=safeStorage.getItem('cya_tab')||'reader';
+      activateTab(savedTab);
+      if(tabReader) tabReader.addEventListener('click', function(){ activateTab('reader'); });
+      if(tabBuilder) tabBuilder.addEventListener('click', function(){ activateTab('builder'); });
+
+      window.ReaderInjectText = function(text){
+        var t = document.getElementById('readerInput');
+        var s = document.getElementById('readerStatus');
+        if(t) t.value = text || '';
+        if(s) s.textContent = 'Received preview from Builder.';
+        activateTab('reader');
+      };
+    }catch(e){ showErrorBanner(e && e.message ? e.message : e); }
+
+    /* ===== Reader ===== */
+    try{
+      (function Reader(){
+        var state={ nodes:{} , current:null , history:[] , startId:null };
+
+        function renderValidatorBanner(nodes, startId){
+          var banner=document.getElementById('readerValidator');
+          var summary=document.getElementById('readerValidatorSummary');
+          var list=document.getElementById('readerValidatorList');
+          var details=document.getElementById('readerValidatorDetails');
+          if(!banner||!summary||!list||!details) return;
+
+          if(!nodes || Object.keys(nodes).length===0){ banner.hidden=true; return; }
+          var res=StoryUtils.validate(nodes, startId);
+          var errors=res.errors, warnings=res.warnings, info=res.info;
+          var errCount=errors.length, warnCount=warnings.length;
+
+          banner.hidden=false; banner.classList.remove('ok','warn','err');
+          if(errCount>0){ banner.classList.add('err'); summary.textContent='Validation: '+errCount+' error(s), '+warnCount+' warning(s)'; }
+          else if(warnCount>0){ banner.classList.add('warn'); summary.textContent='Validation: '+warnCount+' warning(s)'; }
+          else{ banner.classList.add('ok'); summary.textContent='Validation: OK'; }
+
+          var sections=[];
+          if(errors.length){ var eHtml='<h4 style="color:var(--err);margin:.3rem 0;">Errors</h4><ul>';
+            for(var i=0;i<errors.length;i++){ eHtml+='<li>'+escapeHtml(errors[i])+'</li>'; }
+            eHtml+='</ul>'; sections.push(eHtml); }
+          if(warnings.length){ var wHtml='<h4 style="color:var(--warn);margin:.6rem 0 .3rem;">Warnings</h4><ul>';
+            for(var j=0;j<warnings.length;j++){ wHtml+='<li>'+escapeHtml(warnings[j])+'</li>'; }
+            wHtml+='</ul>'; sections.push(wHtml); }
+          if(info.length){ var iHtml='<h4 style="color:var(--muted);margin:.6rem 0 .3rem;">Info</h4><ul>';
+            for(var k=0;k<info.length;k++){ iHtml+='<li>'+escapeHtml(info[k])+'</li>'; }
+            iHtml+='</ul>'; sections.push(iHtml); }
+          list.innerHTML=sections.join(''); details.open=(errCount+warnCount)>0;
+        }
+
+        function renderNode(id){
+          var view=document.getElementById('readerView'); if(!view) return;
+          var node=state.nodes[id];
+          if(!node){ view.innerHTML='<p style="color:#b00020">Missing node '+escapeHtml(id)+'.</p>'; return; }
+          var bodyHtml=node.body ? ('<p>'+escapeHtml(node.body).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>')+'</p>') : '<p class="sub">(No description)</p>';
+          var html='<div class="node-title">'+escapeHtml(node.title)+'</div><div class="node-body">'+bodyHtml+'</div><div class="choices">';
+          var choices=(node.choices||[]);
+          if(choices.length===0){
+            html+='<p class="sub">(No choices; the story ends here.)</p>';
+          }else{
+            for(var i=0;i<choices.length;i++){
+              var c=choices[i]; var label=(i+1)+'. '+escapeHtml(c.text||'');
+              if(c.hasOwnProperty('end')){
+                html+='<button type="button" class="choice-btn" data-end="'+escapeAttr(c.end||'')+'" aria-label="'+escapeAttr(c.text||'')+'">'+label+'</button>';
+              }else{
+                html+='<button type="button" class="choice-btn" data-target="'+escapeAttr(String(c.target||''))+'" aria-label="'+escapeAttr(c.text||'')+'">'+label+'</button>';
+              }
+            }
+          }
+          html+='</div>'; view.innerHTML=html;
+
+          var btns=view.querySelectorAll('.choice-btn');
+          for(var b=0;b<btns.length;b++){
+            btns[b].addEventListener('click', function(){
+              var end=this.getAttribute('data-end'); var target=this.getAttribute('data-target');
+              if(end!=null){
+                showEnding(end); state.history.push(id); updateProgress();
+              }else if(target!=null){
+                state.history.push(id); state.current=target; renderNode(target); updateProgress();
+              }
+            });
+          }
+          state.current=id; updateProgress();
+          if (window.VisualizerAPI) window.VisualizerAPI.refresh();
+        }
+        function showEnding(text){
+          var view=document.getElementById('readerView'); if(!view) return;
+          var endingHtml='<div class="node-title">Ending</div><div class="node-body"><p>'+escapeHtml(text).replace(/\n/g,'<br>')+'</p></div>';
+          view.insertAdjacentHTML('beforeend', endingHtml);
+        }
+        function updateProgress(){
+          var current=state.current ? ('Node '+state.current) : '';
+          var steps=state.history.length;
+          var el=document.getElementById('readerProgress'); if(el) el.textContent=current?('Position: '+current+' • Steps: '+steps):'';
+        }
+        function updateStatsBadge(nodes){
+          var badge=document.getElementById('readerStatsBadge'); if(!badge) return;
+          var totalNodes=Object.keys(nodes).length;
+          var endings={}; var ids=Object.keys(nodes);
+          for(var i=0;i<ids.length;i++){
+            var node=nodes[ids[i]]; var ch=(node.choices||[]);
+            for(var j=0;j<ch.length;j++){ if(ch[j].hasOwnProperty('end')) endings[ch[j].end]=true; }
+          }
+          var endingCount=Object.keys(endings).length;
+          badge.textContent='Nodes: '+totalNodes+' • Endings: '+endingCount;
+        }
+
+        var readerLoadBtn=document.getElementById('readerLoadBtn');
+        if(readerLoadBtn) readerLoadBtn.addEventListener('click', function(){
+          var f=document.getElementById('readerFile'); var s=document.getElementById('readerStatus');
+          var file=f && f.files && f.files[0]; if(!file){ if(s) s.textContent='Choose a .txt file first.'; return; }
+          file.text().then(function(text){
+            var t=document.getElementById('readerInput'); if(t) t.value=text;
+            if(s) s.textContent='Loaded file: '+file.name+' ('+file.size+' bytes)';
+          }).catch(function(e){ showErrorBanner(e && e.message ? e.message : e); });
+        });
+
+        var readerStartBtn=document.getElementById('readerStartBtn');
+        if(readerStartBtn) readerStartBtn.addEventListener('click', function(){ startFromInput(); });
+
+        function startFromInput(){
+          var t=document.getElementById('readerInput'); var s=document.getElementById('readerStatus');
+          var raw=t ? t.value.trim() : ''; if(!raw){ if(s) s.textContent='Paste text or load a file.'; return; }
+          startFromText(raw);
+        }
+        function startFromText(text){
+          var parsed=sharedParseAdventureWithTitle(text);
+          state.nodes=parsed.nodes; state.history=[];
+          var ids=Object.keys(state.nodes).sort(function(a,b){return Number(a)-Number(b);});
+          state.startId = ids.length ? ids[0] : null;
+
+          var bt=document.getElementById('readerBookTitle');
+          var bs=document.getElementById('readerBookSub');
+          var st=document.getElementById('readerStatus');
+          if(bt) bt.textContent=parsed.title||'Untitled Adventure';
+          if(bs) bs.textContent='Click a choice to continue.';
+          if(st) st.textContent='Loaded '+Object.keys(state.nodes).length+' nodes.';
+          if(ids.length===0){
+            if(st) st.textContent='No nodes found. Check the format.';
+            var rv=document.getElementById('readerView'); if(rv) rv.innerHTML='';
+            var vb=document.getElementById('readerValidator'); if(vb) vb.hidden=true;
+            return;
+          }
+          renderValidatorBanner(state.nodes, ids[0]);
+          updateStatsBadge(state.nodes);
+          renderNode(ids[0]);
+          if (window.VisualizerAPI) window.VisualizerAPI.refresh();
+        }
+
+        var readerResetBtn=document.getElementById('readerResetBtn');
+        if(readerResetBtn) readerResetBtn.addEventListener('click', function(){
+          var ok = window.confirm('Reset Reader? This clears the loaded text and current session.');
+          if(!ok) return;
+          var t=document.getElementById('readerInput'); var s=document.getElementById('readerStatus');
+          var bt=document.getElementById('readerBookTitle'); var bs=document.getElementById('readerBookSub');
+          var rv=document.getElementById('readerView'); var pr=document.getElementById('readerProgress');
+          var sb=document.getElementById('readerStatsBadge'); var vb=document.getElementById('readerValidator');
+          if(t) t.value=''; if(s) s.textContent=''; if(bt) bt.textContent='Choose Your Own Adventure';
+          if(bs) bs.textContent='Paste text or load a file, then click Start.'; if(rv) rv.innerHTML='';
+          if(pr) pr.textContent=''; if(sb) sb.textContent=''; if(vb) vb.hidden=true;
+          state.nodes={}; state.history=[]; state.current=null; state.startId=null;
+          if (window.VisualizerAPI) window.VisualizerAPI.refresh();
+        });
+
+        var readerSendToBuilderBtn=document.getElementById('readerSendToBuilderBtn');
+        if(readerSendToBuilderBtn) readerSendToBuilderBtn.addEventListener('click', function(){
+          var t=document.getElementById('readerInput'); var s=document.getElementById('readerStatus');
+          var text = t ? t.value.trim() : '';
+          if(!text){ if(s) s.textContent='Nothing to send. Paste or load text first.'; return; }
+          var ok = window.confirm('Send current Reader text to Builder and switch tabs? This will replace the current Builder project in memory.');
+          if(!ok) return;
+          try{
+            var parsed = sharedParseAdventureWithTitle(text);
+            if(!window.BuilderAPI || !window.BuilderAPI.state){
+              if(s) s.textContent='Builder not ready.'; return;
+            }
+            applyToBuilderFromParsed(parsed);
+            if(s) s.textContent='Sent text to Builder.';
+            var tabBuilder=document.getElementById('tabBuilder'); if(tabBuilder) tabBuilder.click();
+            if (window.VisualizerAPI) window.VisualizerAPI.refresh();
+          }catch(e){ if(s) s.textContent='Failed to send to Builder.'; showErrorBanner(e && e.message ? e.message : e); }
+        });
+
+        function applyToBuilderFromParsed(parsed){
+          var title = parsed.title || '';
+          var nodes = parsed.nodes || {};
+          var ids = Object.keys(nodes).map(function(n){return Number(n);}).sort(function(a,b){return a-b;});
+          var bb=document.getElementById('builderBookTitle'); var bs=document.getElementById('builderStartNode');
+          if(bb) bb.value = title; if(bs) bs.value = ids.length ? String(ids[0]) : '';
+
+          window.BuilderAPI.state.title = title;
+          window.BuilderAPI.state.nodes = {};
+          for(var i=0;i<ids.length;i++){
+            var id = ids[i];
+            var n = nodes[String(id)];
+            window.BuilderAPI.state.nodes[id] = {
+              id: id,
+              title: n.title || ('Node '+id),
+              body: n.body || '',
+              decisionCount: (typeof n.decisionCount==='number')? n.decisionCount : ((n.choices||[]).length),
+              choices: (n.choices||[]).map(function(ch){
+                return ch.hasOwnProperty('end')
+                  ? { text: ch.text||'', end: ch.end||'' }
+                  : { text: ch.text||'', target: String(ch.target||'') };
+              })
+            };
+          }
+          window.BuilderAPI.state.selectedId = ids[0] || null;
+          window.BuilderAPI.renderAll();
+          window.BuilderAPI.scheduleAutosave();
+        }
+
+        var readerBackBtn=document.getElementById('readerBackBtn');
+        if(readerBackBtn) readerBackBtn.addEventListener('click', function(){
+          if(!state.history.length) return;
+          var prev=state.history.pop(); state.current=prev; renderNode(prev);
+        });
+
+        document.addEventListener('keydown', function(e){
+          var panel=document.getElementById('panelReader');
+          var readerVisible=panel? !panel.hidden : false;
+          if(!readerVisible || !state.current) return;
+          var digits='123456789'; var idx=digits.indexOf(e.key);
+          if(idx!==-1){
+            var buttons=document.querySelectorAll('#panelReader .choice-btn');
+            if(buttons[idx]) buttons[idx].click();
+          }
+        });
+
+        window.ReaderAPI = {
+          getNodes: function(){ return state.nodes; },
+          getStartId: function(){ return state.startId; }
+        };
+        window.ReaderStartFromText = startFromText;
+        window.ReaderStartFromInput = startFromInput;
+      })();
+    }catch(e){ showErrorBanner(e && e.message ? e.message : e); }
+
+    /* ===== Snackbar (Undo) ===== */
+    var snackbar = document.getElementById('snackbar');
+    var snackbarMsg = document.getElementById('snackbarMsg');
+    var snackbarUndoBtn = document.getElementById('snackbarUndoBtn');
+    var undoState = { active: false, type: null, payload: null, timer: null };
+    function showUndo(message, type, payload) {
+      try{
+        if (undoState.timer) { clearTimeout(undoState.timer); undoState.timer = null; }
+        undoState.active = true; undoState.type = type; undoState.payload = payload;
+        if(snackbarMsg) snackbarMsg.textContent = message || 'Action completed.';
+        if(snackbar) snackbar.classList.add('show');
+        if(snackbarUndoBtn) snackbarUndoBtn.onclick = function(){ performUndo(); };
+        undoState.timer = setTimeout(function(){ hideUndo(); }, 10000);
+      }catch(e){ showErrorBanner(e && e.message ? e.message : e); }
+    }
+    function hideUndo() {
+      try{
+        if (undoState.timer) { clearTimeout(undoState.timer); undoState.timer = null; }
+        undoState.active = false; undoState.type = null; undoState.payload = null;
+        if(snackbar) snackbar.classList.remove('show');
+      }catch(e){ showErrorBanner(e && e.message ? e.message : e); }
+    }
+    function performUndo() {
+      try{
+        if (!undoState.active) return;
+        var type = undoState.type; var p = undoState.payload;
+        hideUndo();
+        if (type === 'delete-node' && p && p.node) {
+          BuilderAPI.state.nodes[p.node.id] = JSON.parse(JSON.stringify(p.node));
+          if (p.selectAfterRestore) { BuilderAPI.state.selectedId = p.node.id; }
+          BuilderAPI.renderAll(); BuilderAPI.setStatus('Undo: restored node '+p.node.id+'.');
+          BuilderAPI.scheduleAutosave();
+        } else if (type === 'duplicate-node' && p && p.newId) {
+          if (BuilderAPI.state.nodes.hasOwnProperty(p.newId)) {
+            delete BuilderAPI.state.nodes[p.newId];
+            if (BuilderAPI.state.selectedId === p.newId) { BuilderAPI.state.selectedId = p.prevSelectedId || null; }
+            BuilderAPI.renderAll(); BuilderAPI.setStatus('Undo: reverted duplication (removed node '+p.newId+').');
+            BuilderAPI.scheduleAutosave();
+          }
+        }
+      }catch(e){ showErrorBanner(e && e.message ? e.message : e); }
+    }
+
+    /* ===== Builder ===== */
+    try{
+      (function Builder(){
+        var state={ title:'' , nodes:{} , selectedId:null , autosaveKey:'adventure_builder_autosave_v1' };
+        var playState={ nodes:{} , current:null , history:[] };
+        function setStatus(msg){ var el=document.getElementById('builderStatus'); if(el) el.textContent=msg||''; }
+
+        var autosaveTimer=null;
+        function scheduleAutosave(){
+          if(autosaveTimer) clearTimeout(autosaveTimer);
+          autosaveTimer=setTimeout(function(){
+            var proj=projectToJson();
+            try{ safeStorage.setItem(state.autosaveKey, JSON.stringify(proj)); setStatus('Autosaved.'); }
+            catch(e){ setStatus('Autosave skipped (storage unavailable).'); }
+          }, 500);
+        }
+
+        function nextNodeId(){
+          var ids=Object.keys(state.nodes).map(function(n){return Number(n);}).sort(function(a,b){return a-b;});
+          return ids.length? (ids[ids.length-1]+1) : 1;
+        }
+
+        function renderNodeList(){
+          var list=document.getElementById('builderNodeList'); if(!list) return;
+          var ids=Object.keys(state.nodes).map(function(n){return Number(n);}).sort(function(a,b){return a-b;});
+          if(!ids.length){ list.innerHTML='<p class="hint">No nodes yet. Click “Add Node”.</p>'; return; }
+          var html=''; for(var i=0;i<ids.length;i++){
+            var id=ids[i]; var n=state.nodes[id];
+            var title=n.title||('Node '+id);
+            var dc=(typeof n.decisionCount==='number')? n.decisionCount : (n.choices||[]).length;
+            html+=
+              '<div class="node-card" data-id="'+escapeAttr(String(id))+'">'+
+                '<div>'+
+                  '<div><strong>Node '+escapeHtml(String(id))+'</strong> — '+escapeHtml(title)+'</div>'+
+                  '<div class="meta">DECISION: '+escapeHtml(String(dc))+' • '+escapeHtml(String((n.choices||[]).length))+' choice'+(((n.choices||[]).length===1)?'':'s')+'</div>'+
+                '</div>'+
+                '<div class="inline">'+
+                  '<button type="button" class="ghost" data-act="select">Edit</button>'+
+                  '<button type="button" class="ghost" data-act="dup">Duplicate</button>'+
+                  '<button type="button" class="ghost" data-act="del">Delete</button>'+
+                '</div>'+
+              '</div>';
+          }
+          list.innerHTML=html;
+          var cards=list.querySelectorAll('.node-card');
+          for(var c=0;c<cards.length;c++){
+            (function(card){
+              var id=Number(card.getAttribute('data-id'));
+              var btnSel=card.querySelector('[data-act="select"]');
+              var btnDup=card.querySelector('[data-act="dup"]');
+              var btnDel=card.querySelector('[data-act="del"]');
+              if(btnSel) btnSel.addEventListener('click', function(){ state.selectedId=id; renderEditor(); });
+              if(btnDup) btnDup.addEventListener('click', function(){ duplicateNode(id); });
+              if(btnDel) btnDel.addEventListener('click', function(){ deleteNode(id); });
+              card.addEventListener('click', function(e){ if(e.target.closest('button')) return; state.selectedId=id; renderEditor(); });
+            })(cards[c]);
+          }
+        }
+
+        function addNode(){
+          var id=nextNodeId();
+          state.nodes[id]={ id:id, title:'Node '+id, body:'', decisionCount:0, choices:[] };
+          state.selectedId=id; renderAll(); setStatus('Added node '+id+'.'); scheduleAutosave();
+        }
+        function duplicateNode(id){
+          var orig=state.nodes[id]; if(!orig) return;
+          var newId=nextNodeId();
+          state.nodes[newId]=JSON.parse(JSON.stringify({ id:newId, title:orig.title+' (copy)', body:orig.body, decisionCount:orig.decisionCount, choices:orig.choices }));
+          var prevSelectedId = state.selectedId;
+          state.selectedId=newId; renderAll(); setStatus('Duplicated node '+id+' → '+newId+'.'); scheduleAutosave();
+          showUndo('Duplicated node '+id+' → '+newId+'.', 'duplicate-node', { newId: newId, prevSelectedId: prevSelectedId });
+        }
+        function deleteNode(id){
+          if(!state.nodes[id]) return;
+          if(Object.keys(state.nodes).length===1){ setStatus('Cannot delete the only node.'); return; }
+          var snapshot = JSON.parse(JSON.stringify(state.nodes[id]));
+          var selectAfterRestore = (state.selectedId === id);
+          delete state.nodes[id];
+          if(state.selectedId===id) state.selectedId=null;
+          renderAll(); setStatus('Deleted node '+id+'.'); scheduleAutosave();
+          showUndo('Deleted node '+id+'.', 'delete-node', { node: snapshot, selectAfterRestore: selectAfterRestore });
+        }
+
+        function choiceRowHtml(c, idx){
+          var isEnding=c.hasOwnProperty('end');
+          var targetVal=isEnding? (c.end||'') : (c.target||'');
+          return ''+
+          '<div class="choice-row" data-idx="'+escapeAttr(String(idx))+'">'+
+            '<div>'+
+              '<label>Text</label>'+
+              '<input type="text" class="ch-text" value="'+escapeAttr(c.text||'')+'" placeholder="e.g., Take the left path" />'+
+            '</div>'+
+            '<div>'+
+              '<label>Type</label>'+
+              '<select class="ch-type">'+
+                '<option value="node" '+(!isEnding?'selected':'')+'>Go to node</option>'+
+                '<option value="ending" '+(isEnding?'selected':'')+'>Ending (final text)</option>'+
+              '</select>'+
+            '</div>'+
+            '<div>'+
+              '<label>'+(isEnding?'Ending text':'Target node')+'</label>'+
+              '<input type="'+(isEnding?'text':'number')+'" class="ch-target" value="'+escapeAttr(targetVal)+'" placeholder="'+(isEnding?'e.g., You wake restored.':'e.g., 3')+'" />'+
+              '<div class="inline" style="margin-top:.3rem;">'+
+                '<button type="button" class="ghost del">Remove</button>'+
+              '</div>'+
+            '</div>'+
+          '</div>';
+        }
+
+        function bindChoiceRows(node){
+          var wrap=document.getElementById('choicesWrap'); if(!wrap) return;
+          var rows=wrap.querySelectorAll('.choice-row');
+          for(var r=0;r<rows.length;r++){
+            (function(row){
+              var idx=Number(row.getAttribute('data-idx'));
+              var ch=node.choices[idx];
+              var txt=row.querySelector('.ch-text');
+              var typeSel=row.querySelector('.ch-type');
+              var targetInput=row.querySelector('.ch-target');
+              if(txt) txt.addEventListener('input', function(e){
+                ch.text=e.target.value; renderPreview(); renderNodeList(); renderValidator(); renderStatsBadge(); scheduleAutosave();
+              });
+              function syncTypeUI(){
+                var isEnding=(typeSel && typeSel.value==='ending');
+                var label=row.querySelector('label:nth-of-type(3)');
+                if(label) label.textContent=isEnding?'Ending text':'Target node';
+                if(targetInput) targetInput.setAttribute('type', isEnding?'text':'number');
+                if(isEnding){ delete ch.target; if(!ch.end) ch.end=''; }
+                else{ delete ch.end; if(!ch.target) ch.target=''; }
+                renderPreview(); renderValidator(); renderStatsBadge(); scheduleAutosave();
+              }
+              if(typeSel) typeSel.addEventListener('change', syncTypeUI);
+              if(targetInput) targetInput.addEventListener('input', function(e){
+                if(typeSel && typeSel.value==='ending') ch.end=e.target.value;
+                else ch.target=e.target.value;
+                renderPreview(); renderValidator(); renderStatsBadge(); scheduleAutosave();
+              });
+              var del=row.querySelector('.del');
+              if(del) del.addEventListener('click', function(){
+                node.choices.splice(idx, 1);
+                renderEditor(); renderNodeList(); renderPreview(); renderValidator(); renderStatsBadge(); scheduleAutosave();
+              });
+              syncTypeUI();
+            })(rows[r]);
+          }
+        }
+
+        function renderEditor(){
+          var wrap=document.getElementById('builderEditorInner'); if(!wrap) return;
+          var id=state.selectedId;
+          if(!id || !state.nodes[id]){ wrap.innerHTML='<p class="hint">Select a node above to edit.</p>'; return; }
+          var n=state.nodes[id]; var choices=n.choices||[];
+          var decVal=(typeof n.decisionCount==='number')? n.decisionCount : choices.length;
+
+          var html =
+            '<div class="row">' +
+              '<div>' +
+                '<label for="editId">Node Number</label>' +
+                '<input type="number" id="editId" min="1" value="' + escapeAttr(String(n.id)) + '" />' +
+                '<span class="hint">Must be unique.</span>' +
+              '</div>' +
+              '<div>' +
+                '<label for="editTitle">Node Title</label>' +
+                '<input type="text" id="editTitle" value="' + escapeAttr(n.title||'') + '" />' +
+              '</div>' +
+            '</div>' +
+            '<div style="margin-top:.5rem;">' +
+              '<label for="editDecisions">DECISION (number of choices)</label>' +
+              '<input type="number" id="editDecisions" min="0" value="' + escapeAttr(String(decVal)) + '" />' +
+              '<span class="hint">You can set this; validator warns if it doesn’t match actual choices.</span>' +
+            '</div>' +
+            '<div>' +
+              '<label for="editBody" style="margin-top:.5rem;">Node Description (body)</label>' +
+              '<textarea id="editBody" placeholder="Write the scene...">' + escapeHtml(n.body||'') + '</textarea>' +
+            '</div>' +
+            '<div style="margin-top:.75rem;">' +
+              '<div class="inline">' +
+                '<strong>Choices</strong>' +
+                '<button type="button" class="ghost" id="addChoiceBtn">+ Add Choice</button>' +
+              '</div>' +
+              '<div id="choicesWrap">' +
+                (function(){ var s='', i; for(i=0;i<choices.length;i++){ s+=choiceRowHtml(choices[i], i); } return s; })() +
+              '</div>' +
+            '</div>';
+          wrap.innerHTML=html;
+
+          var editId=document.getElementById('editId');
+          var editTitle=document.getElementById('editTitle');
+          var editBody=document.getElementById('editBody');
+          var editDec=document.getElementById('editDecisions');
+          var addChoiceBtn=document.getElementById('addChoiceBtn');
+
+          if(editId) editId.addEventListener('change', function(e){ changeNodeId(id, Number(e.target.value)); });
+          if(editTitle) editTitle.addEventListener('input', function(e){ n.title=e.target.value; renderPreview(); renderNodeList(); renderValidator(); renderStatsBadge(); scheduleAutosave(); });
+          if(editBody) editBody.addEventListener('input', function(e){ n.body=e.target.value; renderPreview(); scheduleAutosave(); });
+          if(editDec) editDec.addEventListener('input', function(e){ n.decisionCount=Number(e.target.value)||0; renderPreview(); renderNodeList(); renderValidator(); scheduleAutosave(); });
+          if(addChoiceBtn) addChoiceBtn.addEventListener('click', function(){
+            n.choices.push({ text:'', target:'' });
+            renderEditor(); renderNodeList(); renderPreview(); renderStatsBadge(); renderValidator(); scheduleAutosave();
+          });
+          bindChoiceRows(n);
+        }
+
+        function changeNodeId(oldId, newId){
+          if(!isFinite(newId) || newId<1 || Math.floor(newId)!==newId){ setStatus('Node number must be a positive integer.'); renderEditor(); return; }
+          if(state.nodes[newId] && newId!==oldId){ setStatus('Node '+newId+' already exists.'); renderEditor(); return; }
+          var node=state.nodes[oldId]; delete state.nodes[oldId]; node.id=newId; state.nodes[newId]=node; state.selectedId=newId;
+          renderNodeList(); renderEditor(); renderPreview(); renderValidator(); setStatus('Renamed node '+oldId+' → '+newId+'.'); scheduleAutosave();
+        }
+
+        function renderValidator(){
+          var banner=document.getElementById('builderValidator');
+          var summary=document.getElementById('builderValidatorSummary');
+          var list=document.getElementById('builderValidatorList');
+          var details=document.getElementById('builderValidatorDetails');
+          if(!banner||!summary||!list||!details) return;
+
+          var res=StoryUtils.validate(nodesFromState(), getStartId());
+          var errors=res.errors, warnings=res.warnings, info=res.info;
+          var err=errors.length, warn=warnings.length;
+
+          if(!err && !warn && !info.length){ banner.hidden=true; return; }
+          banner.hidden=false; banner.classList.remove('ok','warn','err');
+          if(err){ banner.classList.add('err'); summary.textContent='Validation: '+err+' error(s), '+warn+' warning(s)'; }
+          else if(warn){ banner.classList.add('warn'); summary.textContent='Validation: '+warn+' warning(s)'; }
+          else{ banner.classList.add('ok'); summary.textContent='Validation: OK'; }
+
+          var sections=[];
+          if(errors.length){ var eHtml='<h4 style="color:var(--err);margin:.3rem 0;">Errors</h4><ul>';
+            for(var i=0;i<errors.length;i++){ eHtml+='<li>'+escapeHtml(errors[i])+'</li>'; }
+            eHtml+='</ul>'; sections.push(eHtml); }
+          if(warnings.length){ var wHtml='<h4 style="color:var(--warn);margin:.6rem 0 .3rem;">Warnings</h4><ul>';
+            for(var j=0;j<warnings.length;j++){ wHtml+='<li>'+escapeHtml(warnings[j])+'</li>'; }
+            wHtml+='</ul>'; sections.push(wHtml); }
+          if(info.length){ var iHtml='<h4 style="color:var(--muted);margin:.6rem 0 .3rem;">Info</h4><ul>';
+            for(var k=0;k<info.length;k++){ iHtml+='<li>'+escapeHtml(info[k])+'</li>'; }
+            iHtml+='</ul>'; sections.push(iHtml); }
+          list.innerHTML=sections.join(''); details.open=(err+warn)>0;
+        }
+
+        function getStartId(){
+          var el=document.getElementById('builderStartNode'); var v=el? String(el.value).trim() : '';
+          if(v) return Number(v);
+          var ids=Object.keys(state.nodes).map(function(n){return Number(n);}).sort(function(a,b){return a-b;});
+          return ids.length? ids[0] : null;
+        }
+
+        function buildText(){
+          var t=document.getElementById('builderBookTitle'); state.title=t? t.value : '';
+          var title=(state.title||'').trim();
+          var ids=Object.keys(state.nodes).map(function(n){return Number(n);}).sort(function(a,b){return a-b;});
+          var blocks=[];
+          for(var i=0;i<ids.length;i++){
+            var id=ids[i]; var n=state.nodes[id];
+            var body=(n.body||'').trim(); var choices=n.choices||[];
+            var dec=(typeof n.decisionCount==='number')? n.decisionCount : choices.length;
+            var lines=[];
+            lines.push('# NODE: '+id);
+            lines.push('Title: '+(n.title || ('Node '+id)));
+            if(body) lines.push(body);
+            lines.push('');
+            lines.push('DECISION: '+dec);
+            for(var j=0;j<choices.length;j++){
+              var ch=choices[j];
+              if(ch.hasOwnProperty('end')){
+                var endText=sanitizeEndingQuotes(ch.end||'');
+                lines.push('- '+(ch.text||'(Untitled choice)')+' -> END: "'+endText+'"');
+              }else{
+                lines.push('- '+(ch.text||'(Untitled choice)')+' -> '+String(ch.target||'').trim());
+              }
+            }
+            blocks.push(lines.join('\n'));
+          }
+          return [title,''].concat(blocks).join('\n');
+        }
+
+        function renderPreview(){ var pre=document.getElementById('builderPreview'); if(pre) pre.textContent=buildText(); }
+        function renderStatsBadge(){
+          var badge=document.getElementById('builderStatsBadge'); if(!badge) return;
+          var totalNodes=Object.keys(state.nodes).length; var endings={};
+          var ids=Object.keys(state.nodes);
+          for(var i=0;i<ids.length;i++){
+            var node=state.nodes[ids[i]]; var cs=(node.choices||[]);
+            for(var j=0;j<cs.length;j++){ if(cs[j].hasOwnProperty('end')) endings[cs[j].end||'']=true; }
+          }
+          var endingCount=Object.keys(endings).length;
+          badge.textContent='Nodes: '+totalNodes+' • Endings: '+endingCount;
+        }
+
+        function nodesFromState(){
+          var out={}; var ids=Object.keys(state.nodes);
+          for(var i=0;i<ids.length;i++){
+            var idStr=ids[i]; var n=state.nodes[idStr];
+            var id=String(idStr);
+            var choices=(n.choices||[]).map(function(ch){
+              if(ch.hasOwnProperty('end')) return { text:ch.text||'', end:ch.end||'' };
+              return { text:ch.text||'', target:String(ch.target||'').trim() };
+            });
+            out[id]={ id:id, title:n.title||('Node '+id), body:n.body||'', choices:choices, decisionCount:(typeof n.decisionCount==='number')?n.decisionCount:(choices.length) };
+          }
+          return out;
+        }
+
+        function renderPlayNode(id){
+          var view=document.getElementById('builderPlayView'); if(!view) return;
+          var node=playState.nodes[id];
+          if(!node){ view.innerHTML='<p class="hint" style="color:#b00020">Missing node '+escapeHtml(id)+'.</p>'; return; }
+          var bodyHtml=node.body ? ('<p>'+escapeHtml(node.body).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>')+'</p>') : '<p class="sub">(No description)</p>';
+          var html='<div class="play-node-title">'+escapeHtml(node.title)+'</div><div class="play-body">'+bodyHtml+'</div><div class="play-choices">';
+          var choices=(node.choices||[]);
+          if(choices.length===0){ html+='<p class="sub">(No choices; the story ends here.)</p>'; }
+          else{
+            for(var i=0;i<choices.length;i++){
+              var c=choices[i]; var label=(i+1)+'. '+escapeHtml(c.text||'');
+              if(c.hasOwnProperty('end')){
+                html+='<button type="button" class="play-btn" data-end="'+escapeAttr(c.end||'')+'">'+label+'</button>';
+              }else{
+                html+='<button type="button" class="play-btn" data-target="'+escapeAttr(String(c.target||''))+'">'+label+'</button>';
+              }
+            }
+          }
+          html+='</div><div class="inline play-back"><button type="button" class="ghost" id="builderPlayBackBtn">← Back</button></div>';
+          view.innerHTML=html;
+
+          var pbtns=view.querySelectorAll('.play-btn');
+          for(var b=0;b<pbtns.length;b++){
+            pbtns[b].addEventListener('click', function(){
+              var end=this.getAttribute('data-end'); var target=this.getAttribute('data-target');
+              if(end!=null){
+                var endingHtml='<div class="play-node-title">Ending</div><div><p>'+escapeHtml(end).replace(/\n/g,'<br>')+'</p></div>';
+                view.insertAdjacentHTML('beforeend', endingHtml); playState.history.push(id);
+              }else if(target!=null){
+                playState.history.push(id); playState.current=target; renderPlayNode(target);
+              }
+            });
+          }
+          var backBtn=document.getElementById('builderPlayBackBtn');
+          if(backBtn) backBtn.addEventListener('click', function(){
+            if(!playState.history.length) return;
+            var prev=playState.history.pop(); playState.current=prev; renderPlayNode(prev);
+          });
+        }
+
+        function startTestPlay(){
+          playState.nodes=nodesFromState();
+          var ids=Object.keys(playState.nodes).sort(function(a,b){return Number(a)-Number(b);});
+          var startId=String(getStartId()!=null? getStartId() : (ids[0]||''));
+          if(!startId){ var view=document.getElementById('builderPlayView'); if(view) view.innerHTML='<p class="hint">No nodes to play. Add a node first.</p>'; return; }
+          playState.history=[]; playState.current=startId; var v=document.getElementById('builderPlayView'); if(v) v.innerHTML=''; renderPlayNode(startId);
+        }
+
+        function projectToJson(){
+          var nodesArr=[]; var ids=Object.keys(state.nodes);
+          for(var i=0;i<ids.length;i++){
+            var n=state.nodes[ids[i]];
+            var decisionCount=(typeof n.decisionCount==='number')? n.decisionCount : (n.choices||[]).length;
+            var choices=(n.choices||[]).map(function(ch){ return ch.hasOwnProperty('end')? {text:ch.text||'', end:ch.end||''} : {text:ch.text||'', target:String(ch.target||'')}; });
+            nodesArr.push({ id:n.id, title:n.title, body:n.body, decisionCount:decisionCount, choices:choices });
+          }
+          var startNodeEl=document.getElementById('builderStartNode');
+          return { title:state.title, startNode:(startNodeEl ? startNodeEl.value||null : null), nodes:nodesArr };
+        }
+
+        function applyProjectJson(proj){
+          state.title=proj.title||''; var bt=document.getElementById('builderBookTitle'); if(bt) bt.value=state.title;
+          var sn=document.getElementById('builderStartNode'); if(sn) sn.value=proj.startNode||'';
+          state.nodes={};
+          var nodes=proj.nodes||[];
+          for(var i=0;i<nodes.length;i++){
+            var n=nodes[i];
+            state.nodes[n.id]={ id:Number(n.id), title:n.title||('Node '+n.id), body:n.body||'', decisionCount:Number(n.decisionCount||0)||0, choices:(n.choices||[]).map(function(ch){
+              return ch.hasOwnProperty('end')? { text:ch.text||'', end:ch.end||'' } : { text:ch.text||'', target:String(ch.target||'') };
+            }) };
+          }
+          var ids=Object.keys(state.nodes).map(function(n){return Number(n);}).sort(function(a,b){return a-b;});
+          state.selectedId=ids[0]||null; renderAll();
+        }
+
+        function renderAll(){ renderNodeList(); renderEditor(); renderPreview(); renderStatsBadge(); renderValidator(); }
+
+        var addNodeBtn=document.getElementById('builderAddNodeBtn'); if(addNodeBtn) addNodeBtn.addEventListener('click', addNode);
+        var bookTitle=document.getElementById('builderBookTitle'); if(bookTitle) bookTitle.addEventListener('input', function(){ state.title=bookTitle.value; renderPreview(); scheduleAutosave(); });
+        var startNode=document.getElementById('builderStartNode'); if(startNode) startNode.addEventListener('input', function(){ renderValidator(); scheduleAutosave(); });
+
+        var dlBtn=document.getElementById('builderDownloadBtn'); if(dlBtn) dlBtn.addEventListener('click', function(){
+          var text=buildText(); try{
+            var blob=new Blob([text], {type:'text/plain;charset=utf-8'});
+            var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='adventure.txt'; a.click(); URL.revokeObjectURL(url);
+          }catch(e){ showErrorBanner(e && e.message ? e.message : e); }
+        });
+        var copyBtn=document.getElementById('builderCopyBtn'); if(copyBtn) copyBtn.addEventListener('click', function(){
+          var text=buildText();
+          if(navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(text).then(function(){ setStatus('Copied preview to clipboard.'); }, function(){ setStatus('Copy failed. Please copy manually.'); });
+          }else{ setStatus('Clipboard API unavailable. Please copy manually.'); }
+        });
+
+        var sendToReader=document.getElementById('builderSendToReaderBtn'); if(sendToReader) sendToReader.addEventListener('click', function(){
+          var ok = window.confirm('Send current Builder preview to Reader and switch tabs?');
+          if(!ok) return;
+          var text=buildText();
+          if (window.ReaderStartFromText) {
+            window.ReaderStartFromText(text);
+            var tabReader=document.getElementById('tabReader'); if(tabReader) tabReader.click();
+          } else {
+            window.ReaderInjectText(text);
+          }
+          setStatus('Sent preview to Reader.'); if (window.VisualizerAPI) window.VisualizerAPI.refresh();
+        });
+
+        var startPlay=document.getElementById('builderStartPlayBtn'); if(startPlay) startPlay.addEventListener('click', startTestPlay);
+        var resetPlay=document.getElementById('builderResetPlayBtn'); if(resetPlay) resetPlay.addEventListener('click', function(){
+          var ok = window.confirm('Reset Test Play? This clears the current play view.'); if(!ok) return;
+          playState.nodes={}; playState.current=null; playState.history=[];
+          var v=document.getElementById('builderPlayView'); if(v) v.innerHTML='<p class="hint">Reset. Click “Start Test”.</p>';
+        });
+
+        var importTxtBtn=document.getElementById('builderImportTxtBtn'); if(importTxtBtn) importTxtBtn.addEventListener('click', function(){
+          var f=document.getElementById('builderImportTxtFile'); var file=f && f.files && f.files[0];
+          if(!file){ setStatus('Choose a .txt file first.'); return; }
+          file.text().then(function(text){
+            var parsed=sharedParseAdventureWithTitle(text);
+            state.title=parsed.title||''; var bt=document.getElementById('builderBookTitle'); if(bt) bt.value=state.title;
+            state.nodes={};
+            var ids=Object.keys(parsed.nodes);
+            for(var i=0;i<ids.length;i++){
+              var id=ids[i]; var n=parsed.nodes[id];
+              state.nodes[Number(id)]={ id:Number(id), title:n.title, body:n.body, decisionCount: (typeof n.decisionCount==='number')? n.decisionCount : (n.choices||[]).length, choices:n.choices || [] };
+            }
+            var sorted=Object.keys(state.nodes).map(function(n){return Number(n);}).sort(function(a,b){return a-b;});
+            state.selectedId=sorted[0]||null;
+            renderAll(); setStatus('Imported '+ids.length+' nodes from "'+file.name+'".'); scheduleAutosave();
+            if (window.VisualizerAPI) window.VisualizerAPI.refresh();
+          }).catch(function(e){ showErrorBanner(e && e.message ? e.message : e); });
+        });
+
+        var saveJsonBtn=document.getElementById('builderSaveJsonBtn'); if(saveJsonBtn) saveJsonBtn.addEventListener('click', function(){
+          var proj=projectToJson();
+          try{
+            var blob=new Blob([JSON.stringify(proj, null, 2)], {type:'application/json'});
+            var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='adventure-project.json'; a.click();
+            URL.revokeObjectURL(url); setStatus('Downloaded project JSON.');
+          }catch(e){ showErrorBanner(e && e.message ? e.message : e); }
+        });
+
+        var importJsonBtn=document.getElementById('builderImportJsonBtn'); if(importJsonBtn) importJsonBtn.addEventListener('click', function(){
+          var f=document.getElementById('builderImportJsonFile'); var file=f && f.files && f.files[0];
+          if(!file){ setStatus('Choose a .json project file first.'); return; }
+          file.text().then(function(text){
+            try{ var proj=JSON.parse(text); applyProjectJson(proj); setStatus('Loaded project from "'+file.name+'".'); scheduleAutosave(); if (window.VisualizerAPI) window.VisualizerAPI.refresh(); }
+            catch(err){ setStatus('Failed to load JSON. Check file format.'); }
+          }).catch(function(e){ showErrorBanner(e && e.message ? e.message : e); });
+        });
+
+        var restoreBtn=document.getElementById('builderRestoreAutosaveBtn'); if(restoreBtn) restoreBtn.addEventListener('click', function(){
+          var text=safeStorage.getItem(state.autosaveKey);
+          if(!text){ setStatus('No autosave found.'); return; }
+          try{ var proj=JSON.parse(text); applyProjectJson(proj); setStatus('Restored from autosave.'); if (window.VisualizerAPI) window.VisualizerAPI.refresh(); }
+          catch(err){ setStatus('Autosave corrupted or incompatible.'); }
+        });
+
+        var newStoryBtn=document.getElementById('builderNewStoryBtn'); if(newStoryBtn) newStoryBtn.addEventListener('click', function(){
+          var ok = window.confirm('Are you sure you want to start a new story? This will clear the current project from the editor.');
+          if(!ok) return;
+          state.title=''; state.nodes={}; state.selectedId=null;
+          var bt=document.getElementById('builderBookTitle'); var sn=document.getElementById('builderStartNode');
+          if(bt) bt.value=''; if(sn) sn.value=''; /* ifsn typo guard ignored by JS, but fix: */
+        });
+
+        /* Fix typo above: proper new story reset */
+        var newStoryBtn2=document.getElementById('builderNewStoryBtn');
+        if(newStoryBtn2) newStoryBtn2.addEventListener('click', function(){
+          var ok = window.confirm('Are you sure you want to start a new story? This will clear the current project from the editor.');
+          if(!ok) return;
+          state.title=''; state.nodes={}; state.selectedId=null;
+          var bt=document.getElementById('builderBookTitle'); var sn=document.getElementById('builderStartNode');
+          if(bt) bt.value=''; if(sn) sn.value='';
+          renderAll(); setStatus('Started a new story.'); scheduleAutosave();
+          if (window.VisualizerAPI) window.VisualizerAPI.refresh();
+        });
+
+        /* Initialize */
+        addNode();
+
+        /* Keyboard numbers in Test Play */
+        document.addEventListener('keydown', function(e){
+          var panel=document.getElementById('panelBuilder');
+          var builderVisible=panel? !panel.hidden : false;
+          if(!builderVisible || !playState.current) return;
+          var digits='123456789'; var idx=digits.indexOf(e.key);
+          if(idx!==-1){
+            var buttons=document.querySelectorAll('#builderPlayView .play-btn');
+            if(buttons[idx]) buttons[idx].click();
+          }
+        });
+
+        window.BuilderAPI = {
+          state: state,
+          renderAll: renderAll,
+          setStatus: setStatus,
+          scheduleAutosave: scheduleAutosave,
+          getStartId: getStartId,
+          parseAdventureWithTitle: sharedParseAdventureWithTitle
+        };
+      })();
+    }catch(e){ showErrorBanner(e && e.message ? e.message : e); }
+
+    /* ===== Visualizer (stable layout, zoom-at-cursor) ===== */
+    try{
+      (function Visualizer(){
+        var panel = document.getElementById('vizPanel');
+        var toggleBtn = document.getElementById('vizToggleBtn');
+        var hideBtn = document.getElementById('vizHideBtn');
+        var zoomInBtn = document.getElementById('vizZoomInBtn');
+        var zoomOutBtn = document.getElementById('vizZoomOutBtn');
+        var canvas = document.getElementById('vizCanvas');
+        var ctx = canvas ? canvas.getContext('2d') : null;
+        var vizCount = document.getElementById('vizCount');
+
+        var scale = 1.0; var minScale = 0.5, maxScale = 3.0;
+        var dragging = false, dragStart = {x:0, y:0}, pan = {x:0, y:0};
+
+        var layout = { positions: {}, lastSize: {w:0,h:0}, lastIdsKey: '' };
+
+        function setCanvasSize() {
+          if(!canvas || !ctx) return;
+          var dpr = window.devicePixelRatio || 1;
+          var rect = canvas.getBoundingClientRect();
+          canvas.width = Math.floor(rect.width * dpr);
+          canvas.height = Math.floor(rect.height * dpr);
+          ctx.setTransform(1,0,0,1,0,0);
+          ctx.scale(dpr, dpr);
+        }
+
+        function getActiveGraph() {
+          var builderVisible = !document.getElementById('panelBuilder').hidden;
+          var readerVisible  = !document.getElementById('panelReader').hidden;
+
+          var nodesObj = {};
+          var startId = null;
+
+          if (builderVisible && window.BuilderAPI) {
+            nodesObj = window.BuilderAPI.state ? window.BuilderAPI.state.nodes : {};
+            startId = window.BuilderAPI.getStartId ? window.BuilderAPI.getStartId() : null;
+          } else if (readerVisible && window.ReaderAPI) {
+            nodesObj = window.ReaderAPI.getNodes ? window.ReaderAPI.getNodes() : {};
+            startId = window.ReaderAPI.getStartId ? window.ReaderAPI.getStartId() : null;
+            if (startId == null) {
+              var rid = Object.keys(nodesObj).sort(function(a,b){return Number(a)-Number(b);});
+              startId = rid.length ? String(rid[0]) : null;
+            }
+          }
+          return { nodesObj: nodesObj, startId: startId };
+        }
+
+        function computeGraph() {
+          var active = getActiveGraph();
+          var nodesObj = active.nodesObj; var startId = active.startId;
+
+          var ids = Object.keys(nodesObj).sort(function(a,b){return Number(a)-Number(b);});
+          var setIds = {}; for (var i=0;i<ids.length;i++) setIds[ids[i]] = true;
+
+          var reachable = {};
+          if (startId != null) {
+            var stack = [String(startId)];
+            var seen = {};
+            while (stack.length) {
+              var u = stack.pop();
+              if (seen[u]) continue;
+              seen[u] = true;
+              reachable[u] = true;
+              var node = nodesObj[u];
+              if (!node) continue;
+              var chs = node.choices || [];
+              for (var ci=0; ci<chs.length; ci++) {
+                var ch = chs[ci];
+                if (ch.hasOwnProperty('target')) {
+                  var to = String(ch.target||'').trim();
+                  if(to) stack.push(to);
+                }
+              }
+            }
+          }
+
+          function hasMissing(node) {
+            var chs = node.choices || [];
+            for (var ci=0; ci<chs.length; ci++) {
+              var ch = chs[ci];
+              if (!ch.text || !String(ch.text).trim()) return true;
+              if (ch.hasOwnProperty('target')) {
+                var t = String(ch.target || '').trim();
+                if (!t || !setIds[t]) return true;
+              }
+            }
+            return false;
+          }
+
+          var nodes = [];
+          for (var i2=0; i2<ids.length; i2++) {
+            var id = ids[i2];
+            var node = nodesObj[id] || {};
+            var missing = hasMissing(node);
+            var isReach = !!reachable[id];
+            nodes.push({ id: id, missing: missing, reachable: isReach });
+          }
+
+          var edges = [];
+          for (var i3=0; i3<ids.length; i3++) {
+            var id = ids[i3];
+            var node = nodesObj[id];
+            var chs = (node && node.choices) ? node.choices : [];
+            for (var ci2=0; ci2<chs.length; ci2++) {
+              var ch = chs[ci2];
+              if (ch.hasOwnProperty('target')) {
+                var t = String(ch.target || '').trim();
+                if (setIds[t]) { edges.push({ from: id, to: t }); }
+              }
+            }
+          }
+
+          return { nodes: nodes, edges: edges, total: ids.length, ids: ids };
+        }
+
+        function ensurePositions(ids) {
+          var rect = canvas.getBoundingClientRect();
+          var w = rect.width, h = rect.height;
+          var idsKey = ids.join(',');
+          var needRecompute = (layout.lastSize.w!==w || layout.lastSize.h!==h || layout.lastIdsKey!==idsKey);
+          if (!needRecompute) return;
+
+          layout.positions = {};
+          layout.lastSize = { w:w, h:h };
+          layout.lastIdsKey = idsKey;
+
+          var margin = 24;
+          var radius = Math.max(60, Math.min((Math.min(w,h)/2)-margin, 20 + ids.length*10));
+          var center = { x: w/2, y: h/2 };
+
+          for (var i=0;i<ids.length;i++){
+            var angle = (Math.PI * 2 * i) / Math.max(1, ids.length);
+            var x = center.x + radius * Math.cos(angle);
+            var y = center.y + radius * Math.sin(angle);
+            layout.positions[ids[i]] = { x:x, y:y };
+          }
+        }
+
+        function drawGraph() {
+          if(!canvas || !ctx) return;
+          setCanvasSize();
+          var rect = canvas.getBoundingClientRect();
+          var w = rect.width, h = rect.height;
+
+          var graph = computeGraph();
+          ensurePositions(graph.ids);
+
+          if (vizCount) { vizCount.textContent = 'Nodes: ' + graph.total; }
+
+          ctx.clearRect(0,0,w,h);
+          ctx.save();
+          ctx.translate(pan.x, pan.y);
+          ctx.scale(scale, scale);
+
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = '#444';
+          for (var i=0; i<graph.edges.length; i++) {
+            var e = graph.edges[i];
+            var a = layout.positions[e.from];
+            var b = layout.positions[e.to];
+            if (!a || !b) continue;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+
+          for (var j=0; j<graph.ids.length; j++) {
+            var id = graph.ids[j];
+            var p = layout.positions[id];
+            var nodeInfo = graph.nodes[j];
+            var fill = nodeInfo.missing ? getCssVar('--err') :
+                       nodeInfo.reachable ? getCssVar('--ok') : '#999';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 12, 0, Math.PI*2);
+            ctx.fillStyle = fill;
+            ctx.fill();
+            ctx.strokeStyle = '#222';
+            ctx.stroke();
+            ctx.fillStyle = getCssVar('--fg');
+            ctx.font = '12px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(id), p.x, p.y);
+          }
+
+          ctx.restore();
+        }
+
+        function getCssVar(name) {
+          var root = document.documentElement;
+          var styles = window.getComputedStyle(root);
+          var v = styles.getPropertyValue(name);
+          return v && v.trim() ? v.trim() : '#333';
+        }
+
+        function zoomAt(clientX, clientY, factor) {
+          var rect = canvas.getBoundingClientRect();
+          var x = clientX - rect.left - pan.x;
+          var y = clientY - rect.top - pan.y;
+          var newScale = Math.max(minScale, Math.min(maxScale, scale * factor));
+          var k = newScale / scale;
+          pan.x -= (x * (k - 1));
+          pan.y -= (y * (k - 1));
+          scale = newScale;
+        }
+
+        if(toggleBtn) toggleBtn.addEventListener('click', function(){
+          if (panel && panel.classList.contains('show')) { panel.classList.remove('show'); }
+          else { if(panel) panel.classList.add('show'); drawGraph(); }
+        });
+        if(hideBtn) hideBtn.addEventListener('click', function(){ if(panel) panel.classList.remove('show'); });
+
+        if(zoomInBtn) zoomInBtn.addEventListener('click', function(){
+          var rect = canvas.getBoundingClientRect();
+          zoomAt(rect.left + rect.width/2, rect.top + rect.height/2, 1.1);
+          drawGraph();
+        });
+        if(zoomOutBtn) zoomOutBtn.addEventListener('click', function(){
+          var rect = canvas.getBoundingClientRect();
+          zoomAt(rect.left + rect.width/2, rect.top + rect.height/2, 1/1.1);
+          drawGraph();
+        });
+
+        if(canvas) canvas.addEventListener('wheel', function(e){
+          e.preventDefault();
+          zoomAt(e.clientX, e.clientY, (e.deltaY>0) ? (1/1.1) : 1.1);
+          drawGraph();
+        }, { passive: false });
+
+        if(canvas) canvas.addEventListener('mousedown', function(e){
+          dragging = true; dragStart.x = e.clientX - pan.x; dragStart.y = e.clientY - pan.y; canvas.style.cursor = 'grabbing';
+        });
+        window.addEventListener('mouseup', function(){ dragging = false; if(canvas) canvas.style.cursor = 'grab'; });
+        window.addEventListener('mousemove', function(e){
+          if (!dragging) return; pan.x = e.clientX - dragStart.x; pan.y = e.clientY - dragStart.y; drawGraph();
+        });
+
+        window.addEventListener('resize', function(){ if (panel && panel.classList.contains('show')) drawGraph(); });
+
+        function hookBuilderRender() {
+          if (!window.BuilderAPI || !window.BuilderAPI.renderAll) {
+            setTimeout(hookBuilderRender, 150); return;
+          }
+          var orig = window.BuilderAPI.renderAll;
+          window.BuilderAPI.renderAll = function(){
+            orig(); if (panel && panel.classList.contains('show')) drawGraph();
+          };
+        }
+        hookBuilderRender();
+
+        window.VisualizerAPI = {
+          refresh: function(){ if (panel && panel.classList.contains('show')) drawGraph(); }
+        };
+      })();
+    }catch(e){ showErrorBanner(e && e.message ? e.message : e); }
+
+  }); /* DOMContentLoaded */
+})(); /* wrapper */
+</script>
+</body>
+</html>
